@@ -49,7 +49,7 @@ if (import.meta.env.PROD) {
 // Run deployment diagnostics
 // runDeploymentDiagnostics();
 
-// Simple and robust app rendering
+// Simple and robust app rendering with better error handling
 console.log('🎯 Attempting to render App component...');
 const rootElement = document.getElementById("root");
 
@@ -59,20 +59,57 @@ if (!rootElement) {
 } else {
   try {
     const root = createRoot(rootElement);
+    
+    // Add a simple loading state first
     root.render(
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: Arial, sans-serif;">
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+          <p>Loading TourCompanion...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     );
-    console.log('✅ App rendered successfully');
+    
+    // Then render the actual app after a short delay
+    setTimeout(() => {
+      try {
+        root.render(
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        );
+        console.log('✅ App rendered successfully');
+      } catch (error) {
+        console.error('❌ Failed to render app:', error);
+        root.render(
+          <div style="padding: 20px; font-family: Arial, sans-serif; text-align: center;">
+            <h1>App Loading Error</h1>
+            <p>There was an error loading the application.</p>
+            <p>Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
+            <button onClick={() => window.location.reload()} style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+              Reload Page
+            </button>
+          </div>
+        );
+      }
+    }, 100);
+    
   } catch (error) {
-    console.error('❌ Failed to render app:', error);
+    console.error('❌ Failed to create root:', error);
     rootElement.innerHTML = `
-      <div style="padding: 20px; font-family: Arial, sans-serif;">
+      <div style="padding: 20px; font-family: Arial, sans-serif; text-align: center;">
         <h1>App Loading Error</h1>
         <p>There was an error loading the application.</p>
         <p>Error: ${error instanceof Error ? error.message : 'Unknown error'}</p>
-        <button onclick="window.location.reload()">Reload Page</button>
+        <button onclick="window.location.reload()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+          Reload Page
+        </button>
       </div>
     `;
   }

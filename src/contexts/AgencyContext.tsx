@@ -49,18 +49,24 @@ export const AgencyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
 
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        // If no user, use default values
-        setAgencySettings({
-          agency_name: 'TourCompanion',
-          agency_logo: '/tourcompanion-logo.png',
-          current_user_email: 'contact@youragency.com'
-        });
-        return;
-      }
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Agency settings timeout')), 5000); // 5 second timeout
+      });
+
+      const loadSettingsPromise = async () => {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          // If no user, use default values
+          setAgencySettings({
+            agency_name: 'TourCompanion',
+            agency_logo: '/tourcompanion-logo.png',
+            current_user_email: 'contact@youragency.com'
+          });
+          return;
+        }
 
         // Load user's agency settings from database
         const { data: profileData, error: profileError } = await supabase
@@ -69,30 +75,33 @@ export const AgencyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           .eq('user_id', user.id)
           .single();
 
-      if (profileData && !profileError) {
-        // Use user's custom agency name and logo
-        const logoPath = profileData.agency_logo || '/tourcompanion-logo.png';
-        console.log('🏢 [AgencyProvider] Setting agency logo:', logoPath);
-        setAgencySettings({
-          agency_name: profileData.agency_name || 'Your Agency',
-          agency_logo: logoPath,
-          current_user_email: profileData.contact_email || user.email || 'contact@youragency.com'
-        });
-      } else {
-        // If no profile found, use default values
-        console.log('🏢 [AgencyProvider] Using default logo: /tourcompanion-logo.png');
-        setAgencySettings({
-          agency_name: 'TourCompanion',
-          agency_logo: '/tourcompanion-logo.png',
-          current_user_email: user.email || 'contact@youragency.com'
-        });
-      }
+        if (profileData && !profileError) {
+          // Use user's custom agency name and logo
+          const logoPath = profileData.agency_logo || '/tourcompanion-logo.png';
+          console.log('🏢 [AgencyProvider] Setting agency logo:', logoPath);
+          setAgencySettings({
+            agency_name: profileData.agency_name || 'Your Agency',
+            agency_logo: logoPath,
+            current_user_email: profileData.contact_email || user.email || 'contact@youragency.com'
+          });
+        } else {
+          // If no profile found, use default values
+          console.log('🏢 [AgencyProvider] Using default logo: /tourcompanion-logo.png');
+          setAgencySettings({
+            agency_name: 'TourCompanion',
+            agency_logo: '/tourcompanion-logo.png',
+            current_user_email: user.email || 'contact@youragency.com'
+          });
+        }
+      };
+
+      await Promise.race([loadSettingsPromise(), timeoutPromise]);
     } catch (error) {
       console.error('Error loading agency settings:', error);
       // Fallback to default values
       setAgencySettings({
-        agency_name: 'Your Agency',
-        agency_logo: '/placeholder-logo.png',
+        agency_name: 'TourCompanion',
+        agency_logo: '/tourcompanion-logo.png',
         current_user_email: 'contact@youragency.com'
       });
     } finally {

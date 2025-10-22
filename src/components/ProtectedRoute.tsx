@@ -27,38 +27,47 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
       }
 
       try {
-        if (requiredRole === 'admin') {
-          // Check if user is super admin
-          const { data, error } = await supabase.rpc('check_user_admin_status', {
-            user_id: user.id
-          });
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Role check timeout')), 10000); // 10 second timeout
+        });
 
-          if (error) {
-            console.error('Error checking admin status:', error);
-            setRoleCheckError('Failed to verify admin status');
-            setHasRequiredRole(false);
-          } else {
-            setHasRequiredRole(data === true);
-          }
-        } else if (requiredRole === 'creator') {
-          // Check if user has a creator profile
-          const { data, error } = await supabase
-            .from('creators')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
+        const roleCheckPromise = async () => {
+          if (requiredRole === 'admin') {
+            // Check if user is super admin
+            const { data, error } = await supabase.rpc('check_user_admin_status', {
+              user_id: user.id
+            });
 
-          if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-            console.error('Error checking creator status:', error);
-            setRoleCheckError('Failed to verify creator status');
-            setHasRequiredRole(false);
+            if (error) {
+              console.error('Error checking admin status:', error);
+              setRoleCheckError('Failed to verify admin status');
+              setHasRequiredRole(false);
+            } else {
+              setHasRequiredRole(data === true);
+            }
+          } else if (requiredRole === 'creator') {
+            // Check if user has a creator profile
+            const { data, error } = await supabase
+              .from('creators')
+              .select('id')
+              .eq('user_id', user.id)
+              .single();
+
+            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+              console.error('Error checking creator status:', error);
+              setRoleCheckError('Failed to verify creator status');
+              setHasRequiredRole(false);
+            } else {
+              setHasRequiredRole(!!data);
+            }
           } else {
-            setHasRequiredRole(!!data);
+            // For 'user' role, any authenticated user is allowed
+            setHasRequiredRole(true);
           }
-        } else {
-          // For 'user' role, any authenticated user is allowed
-          setHasRequiredRole(true);
-        }
+        };
+
+        await Promise.race([roleCheckPromise(), timeoutPromise]);
       } catch (error) {
         console.error('Error in role check:', error);
         setRoleCheckError('Failed to verify user role');
