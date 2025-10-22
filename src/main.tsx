@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
+import AppSimplified from './AppSimplified.tsx'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
 // import { runDeploymentDiagnostics } from './utils/deploymentDiagnostics'
@@ -81,7 +81,7 @@ if (!rootElement) {
       try {
         root.render(
           <ErrorBoundary>
-            <App />
+            <AppSimplified />
           </ErrorBoundary>
         );
         console.log('✅ App rendered successfully');
