@@ -1,86 +1,83 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  base: '/',
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  plugins: [
-    react(),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === 'production';
+  
+  return {
+    base: './',
+    
+    server: {
+      host: '0.0.0.0',
+      port: 3002,  // Changed to 3002 to avoid conflict
+      open: true,
+      strictPort: true,
     },
-  },
-  build: {
-    outDir: "dist",
-    sourcemap: mode === 'development',
-    chunkSizeWarningLimit: 3000,
-    minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => {
-          // Core React libraries - keep together for better caching
-          if (id.includes('react') || id.includes('react-dom')) {
-            return 'react-vendor';
-          }
-          
-          // Supabase - separate chunk
-          if (id.includes('@supabase')) {
-            return 'supabase';
-          }
-          
-          // Charts and visualization - separate chunk for heavy library
-          if (id.includes('recharts')) {
-            return 'charts';
-          }
-          
-          // UI Components - group all Radix UI components together
-          if (id.includes('@radix-ui')) {
-            return 'ui-components';
-          }
-          
-          // Query management
-          if (id.includes('@tanstack/react-query')) {
-            return 'query';
-          }
-          
-          // Form handling
-          if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
-            return 'forms';
-          }
-          
-          // Router
-          if (id.includes('react-router')) {
-            return 'router';
-          }
-          
-          // Utilities - group smaller libraries
-          if (id.includes('lucide-react') || id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
-            return 'utils';
-          }
-          
-          // Large components - separate chunks
-          if (id.includes('components/StatsChart') || id.includes('components/AnalyticsKPI')) {
-            return 'analytics-components';
-          }
-          
-          if (id.includes('components/Dashboard') || id.includes('components/TourVirtuali')) {
-            return 'dashboard-components';
-          }
-          
-          // Default chunk for other modules
-          return 'vendor';
+    
+    preview: {
+      port: 3002,  // Changed to 3002
+      strictPort: true,
+    },
+    
+    build: {
+      outDir: 'dist',
+      sourcemap: isProduction ? false : 'inline',
+      minify: isProduction ? 'esbuild' : false,
+      cssMinify: isProduction,
+      chunkSizeWarningLimit: 3000,
+      rollupOptions: {
+        output: {
+          manualChunks: (id: string) => {
+            if (id.includes('node_modules')) {
+              if (id.includes('@radix-ui')) {
+                return 'vendor-radix';
+              }
+              if (id.includes('react')) {
+                return 'vendor-react';
+              }
+              return 'vendor';
+            }
+            return undefined;
+          },
+          entryFileNames: 'assets/[name].[hash].js',
+          chunkFileNames: 'assets/[name].[hash].js',
+          assetFileNames: 'assets/[name].[hash][extname]',
+        },
+      },
+      assetsInlineLimit: 4096,
+      manifest: isProduction,
+    },
+    
+    plugins: [
+      react({
+        jsxImportSource: '@emotion/react',
+      }),
+    ],
+    
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '~': path.resolve(__dirname, './'),
+      },
+    },
+    
+    define: {
+      'process.env': {},
+      'import.meta.env.MODE': JSON.stringify(mode),
+      global: 'globalThis',
+    },
+    
+    optimizeDeps: {
+      include: ['@emotion/react/jsx-dev-runtime'],
+      esbuildOptions: {
+        define: {
+          global: 'globalThis',
         },
       },
     },
-  },
-  define: {
-    global: 'globalThis',
-  },
-}));
+  };
+});

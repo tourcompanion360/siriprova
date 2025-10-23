@@ -1,95 +1,190 @@
-import { createRoot } from 'react-dom/client'
-import AppSimplified from './AppSimplified.tsx'
-import UltimateFallback from './UltimateFallback.tsx'
-import './index.css'
-import { ErrorBoundary } from './components/ErrorBoundary'
-// import { runDeploymentDiagnostics } from './utils/deploymentDiagnostics'
+import { createRoot } from 'react-dom/client';
+import { StrictMode } from 'react';
+import React from 'react';
+import App from './App';
+import './index.css';
 
-// Simple test to see if React is working
-console.log('🚀 Main.tsx loaded successfully');
-
-// Ensure favicon loads immediately
-const updateFavicon = () => {
-  const favicon = document.querySelector('link[rel="shortcut icon"]') as HTMLLinkElement;
-  if (favicon) {
-    favicon.href = '/favicon.ico?v=' + Date.now();
+// Error Boundary Component
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error?: Error}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false };
   }
-  
-  // Also update other favicon links
-  const faviconPng = document.querySelector('link[rel="icon"][type="image/png"]') as HTMLLinkElement;
-  if (faviconPng) {
-    faviconPng.href = '/favicon-96x96.png?v=' + Date.now();
-  }
-  
-  const faviconSvg = document.querySelector('link[rel="icon"][type="image/svg+xml"]') as HTMLLinkElement;
-  if (faviconSvg) {
-    faviconSvg.href = '/favicon.svg?v=' + Date.now();
-  }
-};
 
-// Update favicon immediately when the app loads
-updateFavicon();
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
 
-// Initialize PWA features only in production to avoid dev caching/blank screens
-if (import.meta.env.PROD) {
-  import('./utils/pwaUtils').then(({ registerServiceWorker, setupOfflineDetection }) => {
-    registerServiceWorker();
-    setupOfflineDetection();
-  }).catch((error) => {
-    console.warn('PWA utils not available:', error);
-  });
-} else {
-  // In development, proactively unregister any existing service workers
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
-    }).catch(() => {});
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Uncaught error:', error, errorInfo);
+    // You can also log the error to an error reporting service
+    // logErrorToService(error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '2rem',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          maxWidth: '600px',
+          margin: '0 auto',
+          textAlign: 'center',
+          color: '#1f2937'
+        }}>
+          <h1 style={{ color: '#ef4444', marginBottom: '1rem' }}>Something went wrong</h1>
+          {import.meta.env.DEV && this.state.error && (
+            <details style={{ 
+              marginBottom: '1.5rem',
+              textAlign: 'left',
+              backgroundColor: '#f3f4f6',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              overflow: 'auto',
+              maxHeight: '200px'
+            }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Error details</summary>
+              <pre style={{ whiteSpace: 'pre-wrap', margin: '0.5rem 0 0', color: '#dc2626' }}>
+                {this.state.error.toString()}
+                {this.state.error.stack && `\n\n${this.state.error.stack}`}
+              </pre>
+            </details>
+          )}
+          <p style={{ marginBottom: '1.5rem' }}>
+            Please refresh the page or try again later.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '0.5rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#2563eb')}
+            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#3b82f6')}
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
   }
 }
 
-// Run deployment diagnostics
-// runDeploymentDiagnostics();
+// Simple console log to verify script execution
+console.log('🚀 Application initializing...');
 
-// Simple and robust app rendering with better error handling
-console.log('🎯 Attempting to render App component...');
-const rootElement = document.getElementById("root");
+// Initialize PWA in the background
+const initPWA = async () => {
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    try {
+      // Dynamically import the service worker registration
+      const { registerServiceWorker } = await import('./utils/pwaUtils');
+      await registerServiceWorker();
+    } catch (error) {
+      console.warn('Failed to initialize PWA:', error);
+    }
+  }
+};
+
+// Get root element
+const rootElement = document.getElementById('root');
 
 if (!rootElement) {
-  console.error('❌ Root element not found');
-  document.body.innerHTML = '<div style="padding: 20px; font-family: Arial, sans-serif;"><h1>App Loading Error</h1><p>Root element not found. Please refresh the page.</p><button onclick="window.location.reload()">Reload Page</button></div>';
-} else {
-  try {
-    const root = createRoot(rootElement);
-    
-    // Add the ultimate fallback first - this GUARANTEES no white screen
-    root.render(<UltimateFallback />);
-    
-    // Then render the actual app after a short delay
-    setTimeout(() => {
-      try {
-        root.render(
-          <ErrorBoundary fallback={<UltimateFallback />}>
-            <AppSimplified />
-          </ErrorBoundary>
-        );
-        console.log('✅ App rendered successfully');
-      } catch (error) {
-        console.error('❌ Failed to render app:', error);
-        root.render(<UltimateFallback />);
-      }
-    }, 100);
-    
-  } catch (error) {
-    console.error('❌ Failed to create root:', error);
-    rootElement.innerHTML = `
-      <div style="padding: 20px; font-family: Arial, sans-serif; text-align: center;">
-        <h1>App Loading Error</h1>
-        <p>There was an error loading the application.</p>
-        <p>Error: ${error instanceof Error ? error.message : 'Unknown error'}</p>
-        <button onclick="window.location.reload()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
-          Reload Page
-        </button>
-      </div>
-    `;
-  }
+  // If root element is not found, show error and prevent further execution
+  document.body.innerHTML = `
+    <div style="
+      padding: 2rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+      color: #1f2937;
+    ">
+      <h1 style="color: #ef4444; margin-bottom: 1rem;">Application Error</h1>
+      <p style="margin-bottom: 1.5rem;">
+        Failed to initialize the application. The root element was not found.
+      </p>
+      <button 
+        onclick="window.location.reload()"
+        style="
+          padding: 0.5rem 1.25rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        "
+        onmouseover="this.style.backgroundColor='#2563eb'"
+        onmouseout="this.style.backgroundColor='#3b82f6'"
+      >
+        Reload Page
+      </button>
+    </div>
+  `;
+  throw new Error('Root element not found');
+}
+
+// Initialize the application
+try {
+  // Create root once
+  const root = createRoot(rootElement);
+  
+  // Single render with proper error boundaries
+  root.render(
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>
+  );
+  
+  console.log('✅ Application initialized successfully');
+  
+  // Initialize PWA after initial render
+  initPWA().catch(console.error);
+  
+} catch (error) {
+  console.error('❌ Failed to initialize application:', error);
+  
+  // Fallback error UI in case rendering fails
+  rootElement.innerHTML = `
+    <div style="
+      padding: 2rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    ">
+      <h1 style="color: #ef4444; margin-bottom: 1rem;">Critical Error</h1>
+      <p style="margin-bottom: 1.5rem;">
+        ${error instanceof Error ? error.message : 'An unexpected error occurred while initializing the application.'}
+      </p>
+      <button 
+        onclick="window.location.reload()"
+        style="
+          padding: 0.5rem 1.25rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        "
+        onmouseover="this.style.backgroundColor='#2563eb'"
+        onmouseout="this.style.backgroundColor='#3b82f6'"
+      >
+        Reload Application
+      </button>
+    </div>
+  `;
 }
