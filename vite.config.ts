@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
   
   return {
-    base: './',
+    base: '/siriprova/',
     
     server: {
       host: '0.0.0.0',

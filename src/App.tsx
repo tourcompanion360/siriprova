@@ -84,9 +84,7 @@ const App = () => {
                             </div>
                           </div>
                         }>
-                          <ProtectedRoute>
-                            <Index />
-                          </ProtectedRoute>
+                          <Index />
                         </ErrorBoundary>
                       }
                     />
@@ -107,9 +105,7 @@ const App = () => {
                             </div>
                           </div>
                         }>
-                          <ProtectedRoute>
-                            <Index />
-                          </ProtectedRoute>
+                          <Index />
                         </ErrorBoundary>
                       }
                     />
@@ -125,14 +121,18 @@ const App = () => {
                     />
                     {/* Test route for client portal - bypasses magic link requirement */}
                     <Route
-                      path="/test-client/:projectId"
-                      element={<TestClientPortalView />}
-                    />
-                    <Route
                       path="/test-portal"
                       element={
                         <ProtectedRoute>
                           <TestClientPortal />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/portal/:projectId"
+                      element={
+                        <ProtectedRoute>
+                          <ClientPortal />
                         </ProtectedRoute>
                       }
                     />
@@ -157,14 +157,6 @@ const App = () => {
                             <AdminDashboard />
                           </AdminRoute>
                         </ErrorBoundary>
-                      }
-                    />
-                    <Route
-                      path="/portal/:projectId"
-                      element={
-                        <ProtectedRoute>
-                          <ClientPortal />
-                        </ProtectedRoute>
                       }
                     />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
